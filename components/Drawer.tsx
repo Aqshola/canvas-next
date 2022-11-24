@@ -1,8 +1,8 @@
 import { Stage, Layer, Line, Text } from "react-konva";
 
 import React, { useState, useRef } from "react";
+import {Size, Event,LineDraw}from "../types/types"
 
-type Event = "NETRAL" | "DRAW" | "GRAB";
 type Props = {
   event: Event;
   size: {
@@ -10,27 +10,23 @@ type Props = {
     height: number;
   };
 };
-type LineDraw = {
-  tool: any;
-  points: number[];
-};
+
 export default function Drawer({ ...props }: Props) {
-  const [tool, setTool] = useState("pen");
   const [lines, setLines] = useState<LineDraw[]>([]);
   const [lastCenter, setlastCenter] = useState<any>(null);
   const [lastDistance, setlastDistance] = useState<any>(null);
   const isDrawing = useRef(false);
 
   function initDraw(e: any) {
-    if (props.event !== "DRAW") return;
+    if (props.event !== "DRAW" && props.event !== "ERASE") return;
     isDrawing.current = true;
     const stage = e.target.getStage();
     const pos = relativePointerPosition(stage);
-    setLines([...lines, { tool, points: [pos.x, pos.y] }]);
+    setLines([...lines, { tool:props.event  , points: [pos.x, pos.y] }]);
   }
 
   function handleDraw(e: any) {
-    if (props.event !== "DRAW") return;
+    if (props.event !== "DRAW" && props.event !== "ERASE") return;
     if (!isDrawing.current) {
       return;
     }
@@ -46,7 +42,7 @@ export default function Drawer({ ...props }: Props) {
   }
 
   function stopDraw() {
-    if (props.event !== "DRAW") return;
+    if (props.event !== "DRAW" && props.event !== "ERASE") return;
     isDrawing.current = false;
   }
 
@@ -169,6 +165,7 @@ export default function Drawer({ ...props }: Props) {
     return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
   }
 
+  
   return (
     <Stage
       onTouchStart={initDraw}
@@ -199,7 +196,7 @@ export default function Drawer({ ...props }: Props) {
             lineCap="round"
             lineJoin="round"
             globalCompositeOperation={
-              line.tool === "eraser" ? "destination-out" : "source-over"
+              line.tool === "ERASE" ? "destination-out" : "source-over"
             }
           />
         ))}
