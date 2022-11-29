@@ -14,6 +14,7 @@ type NextApiResponseWithSocket = NextApiResponse & {
 
 
 let ids:any[]=[]
+let listMouseId:any={}
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponseWithSocket
@@ -43,10 +44,18 @@ export default async function handler(
       
       socket.on("disconnect",function(){
         ids=ids.filter(id=>id!==socket.id)
-        console.log(ids.length)
+        delete listMouseId[socket.id]
+        
         if(ids.length<2){
           socket.broadcast.emit("reload", true);
         }
+      })
+
+      socket.on("mouseCollab",function(data){
+        listMouseId[socket.id]={id:socket.id, ...data}
+        socket.broadcast.emit("userMouseCollab",Object.values(listMouseId))
+
+
       })
     });
 
