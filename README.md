@@ -1,34 +1,19 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Canvas Next
+Simple collaboration drawing app, made using NextJS, React Konva and SocketIO with NextJS API Page for learning SocketIO and of course trying NextJS 13
 
-## Getting Started
+## Feature
+Currently its only have basic feature such as
+- Freehand Draw
+- Move in canvas
+- Zoom
+- Collaboration (limit only 2 user)
 
-First, run the development server:
+## How to
+- just ``npm install ``
 
-```bash
-npm run dev
-# or
-yarn dev
-```
+## Screenshoot
+![image](https://user-images.githubusercontent.com/52363719/205450228-1c005a33-8ef7-4b05-8b7d-d0ff2b624a95.png)
+![image](https://user-images.githubusercontent.com/52363719/205450256-ef3ac659-cf54-48e3-9691-8dee093e81f6.png)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
-
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
-
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Known Bug 
+- double connection made while connecting into socketIO. it happen when client connected to socketIO server, it would be counted as 2 connection with 2 different ID, im still confuse how to handle this, since there's no explanation in stakeoverflow or even official documentation. it really hard to implement auto refresh on waiting room with bug like this
