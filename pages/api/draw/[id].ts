@@ -16,6 +16,7 @@ type Req = {
 };
 
 let ids: any[] = [];
+let waitIds:any[]=[]
 let listMouseId: any = {};
 let someoneDisconnected = false;
 
@@ -35,24 +36,25 @@ export default async function handler(
         socket.broadcast.emit("total", ids);
 
         socket.on("adduser", function () {
-          if (ids.length > 1) {
+          if (ids.length >2) {
             socket.emit("full", true);
+            waitIds.push(socket.id)
           } else {
-            setTimeout(() => {
               if (ids.indexOf(socket.id) == -1) {
                 ids.push(socket.id);
               }
               socket.emit("full", false);
-            }, 0);
+            
           }
         });
 
         socket.on("disconnect", function () {
           ids = ids.filter((id) => id !== socket.id);
+          waitIds = ids.filter((id) => id !== socket.id);
           delete listMouseId[socket.id];
           someoneDisconnected = true;
           if(someoneDisconnected){
-            socket.broadcast.emit("reloading", ids);
+            socket.broadcast.emit("reloading", waitIds);
           }
           
         });

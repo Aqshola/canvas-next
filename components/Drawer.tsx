@@ -120,17 +120,16 @@ export default function Drawer({ ...props }: Props) {
       }
     });
 
-    socket.on("reloading",(data:any[])=>{
-      console.log(data, socket?.id)
-      if(socket){
-        const indexOf=data.indexOf(socket.id)
-        if(indexOf===-1){
-          if(typeof window !== 'undefined'){
-            window.location.reload()
-          }
-        }
-      }
-    })
+    // socket.on("reloading",(data:any[])=>{
+    //   if(socket){
+    //     const indexOf=data.indexOf(socket.id)
+    //     if(indexOf!=-1){
+    //       if(typeof window !== 'undefined'){
+    //         window.location.reload()
+    //       }
+    //     }
+    //   }
+    // })
 
 
     setTimeout(() => {
