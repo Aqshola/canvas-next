@@ -91,10 +91,23 @@ export default function Drawer({ ...props }: Props) {
   
 
   //COLLAB
-  function collabMouse(e: MouseEvent<HTMLDivElement, globalThis.MouseEvent>) {
+  function collabMouse(e: any) {
+    const stage = e.target.getStage();
+    const point = relativePointerPosition(stage);
     socket?.emit("mouseCollab", {
-      x: e.clientX - e.currentTarget.offsetTop,
-      y: e.clientY - e.currentTarget.offsetLeft,
+      x: point.x,
+      y: point.y,
+    });
+    // socket?.emit("mouseCollab", {
+    //   x: e.clientX - e.currentTarget.offsetTop,
+    //   y: e.clientY - e.currentTarget.offsetLeft,
+    // });
+  }
+
+  function collabTouch(e:React.TouchEvent<HTMLDivElement>){
+    socket?.emit("mouseCollab", {
+      x: e.touches[0].clientX - e.currentTarget.offsetTop,
+      y: e.touches[0].clientY - e.currentTarget.offsetLeft,
     });
   }
 
@@ -231,6 +244,7 @@ export default function Drawer({ ...props }: Props) {
 
     // get pointer (say mouse or touch) position
     var pos = node.getStage().getPointerPosition();
+    
 
     // now we find relative point
     return transform.point(pos);
@@ -249,10 +263,10 @@ export default function Drawer({ ...props }: Props) {
 
   
   return (
-    <div className="relative w-full h-full border-2" onMouseMove={collabMouse}>
-      {collabMouseUser.map(el=>(
+    <div className="relative w-full h-full border-2" >
+      {collabMouseUser.map(el=>socket !=undefined && el.id != socket.id? (
         <Cursor id={el.id} x={el.x} y={el.y} key={el.id}/>
-      ))}
+      ):<></>)}
     <Stage
       onTouchStart={initDraw}
       onTouchMove={(e) => {
@@ -267,7 +281,10 @@ export default function Drawer({ ...props }: Props) {
       width={props.size.width}
       height={props.size.height}
       onMouseDown={initDraw}
-      onMousemove={handleDraw}
+      onMousemove={(e:any)=>{
+        handleDraw(e)
+        collabMouse(e)
+      }}
       onMouseup={stopDraw}
       onWheel={handleZoom}
     >
