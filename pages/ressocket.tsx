@@ -94,11 +94,7 @@ export default function Resocket() {
 }
 
 
-function initCursor(props:mouseCollabUser){
-  return <Cursor key={props.id} {...props}/>
-}
 function Cursor({...props}:mouseCollabUser) {
-  console.log(props.x,props.y)
   return (
     <div
       key={props.id}

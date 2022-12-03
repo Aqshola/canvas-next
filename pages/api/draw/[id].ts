@@ -15,41 +15,53 @@ type Req = {
   id: string;
 };
 
-let count=0
+let ids:any[]=[]
+let listMouseId:any={}
+
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponseWithSocket
 ) {
   if (!res.socket.server.io) {
+    console.log("creating new socket io server");
     const httpServer: HttpServer = res.socket.server as any;
     const io = new SocketIOServer(httpServer);
 
-
     if(req.query.id){
-      const id = req.query.id as string;
-      const drawSpace = io.of(id);
+      const mainSpace = io.of(req.query.id.toString());
   
-      drawSpace.on("connection", (socket) => {
-        console.log("creating new socket io servers");
-        count+=1;
-
-        socket.on("disconnect",()=>{
-          console.log("disconnecting")
-          count-=1;
-          
-        })
-        
-        socket.broadcast.emit("total", `total: ${count}`);
+      mainSpace.on("connection", (socket) => {
+        socket.broadcast.emit("total", ids);
   
-        socket.on("dc", () => {
-          socket.disconnect();
+        socket.on("adduser", function () {
+          if (ids.length > 2) {
+            io.to(socket.id).emit("full", true);
+          } else {
+            if (ids.indexOf(socket.id) == -1) {
+              ids.push(socket.id);
+            }
+            io.to(socket.id).emit("full", false);
+          }
+        });
+  
+        socket.on("disconnect", function () {
+          ids = ids.filter((id) => id !== socket.id);
+          delete listMouseId[socket.id];
+  
+          if (ids.length < 2) {
+            socket.broadcast.emit("reload", true);
+          }
+        });
+  
+        socket.on("mouseCollab", function (data) {
+          listMouseId[socket.id] = { id: socket.id, ...data };
+          socket.broadcast.emit("userMouseCollab", Object.values(listMouseId));
         });
       });
-
-      
-  
-      res.socket.server.io = io;
     }
+
+    res.socket.server.io = io;
   }
 
   res.end();

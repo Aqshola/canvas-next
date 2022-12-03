@@ -1,7 +1,9 @@
 import { Stage, Layer, Line, Text } from "react-konva";
-
-import React, { useState, useRef } from "react";
-import {Size, Event,LineDraw}from "../types/types"
+import SocketIOClient, { Socket } from "socket.io-client";
+import React, { useState, useRef,MouseEvent } from "react";
+import {Size, Event,LineDraw, mouseCollabUser}from "../types/types"
+import { useRouter } from "next/router";
+import { useEffect } from "react";
 
 type Props = {
   event: Event;
@@ -11,12 +13,92 @@ type Props = {
   };
 };
 
+
+let socket: Socket | undefined;
+
 export default function Drawer({ ...props }: Props) {
+
+  //DRAW
   const [lines, setLines] = useState<LineDraw[]>([]);
   const [lastCenter, setlastCenter] = useState<any>(null);
   const [lastDistance, setlastDistance] = useState<any>(null);
-  const isDrawing = useRef(false);
 
+  //SOCKET
+  const [loading, setloading] = useState(true)
+  const [valid, setvalid] = useState(false)
+  const [collabMouseUser, setcollabMouseUser] = useState<mouseCollabUser[]>([])
+   
+
+
+  const isDrawing = useRef(false);
+  const shouldInit = useRef(true)
+
+
+
+  const router=useRouter()
+  const {id}=router.query
+
+  useEffect(() => {
+    if (!shouldInit.current) return;
+    initSocket();
+
+    return () => {
+      socket?.off("full");
+      socket?.off("total");
+      socket?.off("connect");
+      socket?.off("adduser");
+      socket?.off("userMouseCollab");
+      socket?.close();
+    };
+  }, []);
+
+  async function initSocket() {
+    await fetch(`/api/draw/${id}`);
+    socket = SocketIOClient(`/${id}`);
+    socket.on("connect", () => {
+      console.log("connected");
+    });
+
+    socket.on("total", (data) => {
+      console.log(data.length);
+    });
+
+    socket.on("full", (data) => {
+      if (data) {
+        alert("Full");
+        setloading(false);
+        setvalid(false);
+      } else {
+        setvalid(true);
+        setloading(false);
+      }
+    });
+
+    socket.on("userMouseCollab", (data) => {
+      console.log(data);
+      
+      setcollabMouseUser(data);
+      
+    });
+
+    setTimeout(() => {
+      if (socket) {
+        socket.emit("adduser", null);
+      }
+    }, 200);
+    shouldInit.current = false;
+  }
+  
+
+  //COLLAB
+  function collabMouse(e: MouseEvent<HTMLDivElement, globalThis.MouseEvent>) {
+    socket?.emit("mouseCollab", {
+      x: e.clientX - e.currentTarget.offsetTop,
+      y: e.clientY - e.currentTarget.offsetLeft,
+    });
+  }
+
+  //DRAW
   function initDraw(e: any) {
     if (props.event !== "DRAW" && props.event !== "ERASE") return;
     isDrawing.current = true;
@@ -167,6 +249,10 @@ export default function Drawer({ ...props }: Props) {
 
   
   return (
+    <div className="relative w-full h-full border-2" onMouseMove={collabMouse}>
+      {collabMouseUser.map(el=>(
+        <Cursor id={el.id} x={el.x} y={el.y} key={el.id}/>
+      ))}
     <Stage
       onTouchStart={initDraw}
       onTouchMove={(e) => {
@@ -202,5 +288,32 @@ export default function Drawer({ ...props }: Props) {
         ))}
       </Layer>
     </Stage>
+    </div>
+  );
+}
+
+
+function Cursor({...props}:mouseCollabUser) {
+  return (
+    <div
+      key={props.id}
+      className="w-5 h-5 flex transition-all absolute z-30"
+      style={{
+        top: props.y + "px",
+        left: props.x + "px",
+      }}
+    >
+      <svg
+        className="w-full h-full fill-blue-700 text-blue-700 "
+        viewBox="0 0 21 22"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          className="shadow-md fill-current"
+          d="M0.272972 0.877113C0.380274 0.769888 0.517568 0.697723 0.666733 0.670139C0.815898 0.642556 0.969921 0.660851 1.10847 0.722612L20.2005 9.20811C20.334 9.2674 20.4473 9.36439 20.5265 9.48718C20.6056 9.60997 20.6472 9.75321 20.6461 9.8993C20.645 10.0454 20.6012 10.188 20.5202 10.3095C20.4392 10.4311 20.3244 10.5264 20.19 10.5836L13.041 13.6451L9.97797 20.7956C9.92037 20.9295 9.825 21.0437 9.70351 21.1243C9.58202 21.2049 9.43969 21.2483 9.29391 21.2493C9.14814 21.2502 9.00525 21.2087 8.88272 21.1297C8.76018 21.0507 8.66332 20.9378 8.60397 20.8046L0.118472 1.71261C0.0570435 1.57425 0.0389261 1.42053 0.0665019 1.27168C0.0940778 1.12282 0.166056 0.985792 0.272972 0.878613L0.272972 0.877113Z"
+        />
+      </svg>
+    </div>
   );
 }

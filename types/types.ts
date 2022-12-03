@@ -8,3 +8,12 @@ export type Size = {
   width: number;
   height: number;
 };
+
+export type mouseCoor = {
+  x: number;
+  y: number;
+};
+
+export type mouseCollabUser = mouseCoor & {
+  id: string;
+};
