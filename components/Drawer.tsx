@@ -1,7 +1,13 @@
 import { Stage, Layer, Line, Text } from "react-konva";
 import SocketIOClient, { Socket } from "socket.io-client";
-import React, { useState, useRef,MouseEvent } from "react";
-import {Size, Event,LineDraw, mouseCollabUser}from "../types/types"
+import React, { useState, useRef, MouseEvent } from "react";
+import {
+  Size,
+  Event,
+  LineDraw,
+  mouseCollabUser,
+  CollabLineDraw,
+} from "../types/types";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 
@@ -11,32 +17,33 @@ type Props = {
     width: number;
     height: number;
   };
+  handleLoading:(...props:any)=>void
+  handleValid:(...props:any)=>void
+  loading:boolean
+  valid:boolean
 };
-
 
 let socket: Socket | undefined;
 
 export default function Drawer({ ...props }: Props) {
-
   //DRAW
   const [lines, setLines] = useState<LineDraw[]>([]);
+  // const [collabLines, setcollabLines] = useState<CollabLineDraw[]>([])
   const [lastCenter, setlastCenter] = useState<any>(null);
   const [lastDistance, setlastDistance] = useState<any>(null);
 
   //SOCKET
-  const [loading, setloading] = useState(true)
-  const [valid, setvalid] = useState(false)
-  const [collabMouseUser, setcollabMouseUser] = useState<mouseCollabUser[]>([])
-   
-
+  const [loading, setloading] = useState(true);
+  const [valid, setvalid] = useState(false);
+  const [collabMouseUser, setcollabMouseUser] = useState<mouseCollabUser[]>([]);
 
   const isDrawing = useRef(false);
-  const shouldInit = useRef(true)
+  const shouldInit = useRef(true);
+  const collabLines = useRef<CollabLineDraw[]>([]);
+  const counterInitDraw = useRef(0);
 
-
-
-  const router=useRouter()
-  const {id}=router.query
+  const router = useRouter();
+  const { id } = router.query;
 
   useEffect(() => {
     if (!shouldInit.current) return;
@@ -48,6 +55,8 @@ export default function Drawer({ ...props }: Props) {
       socket?.off("connect");
       socket?.off("adduser");
       socket?.off("userMouseCollab");
+      socket?.off("newInitDrawCollab");
+      socket?.off("newDrawCollab");
       socket?.close();
     };
   }, []);
@@ -60,37 +69,96 @@ export default function Drawer({ ...props }: Props) {
     });
 
     socket.on("total", (data) => {
-      console.log(data.length);
+      // console.log(data.length);
     });
 
     socket.on("full", (data) => {
+      
       if (data) {
-        alert("Full");
-        setloading(false);
-        setvalid(false);
+        props.handleLoading(false);
+        props.handleValid(false);
       } else {
-        setvalid(true);
-        setloading(false);
+        props.handleValid(true);
+        setTimeout(() => {
+          props.handleLoading(false);
+        }, 2000);
       }
     });
 
     socket.on("userMouseCollab", (data) => {
-      console.log(data);
-      
       setcollabMouseUser(data);
+    });
+
+    socket.on("newInitDrawCollab", (data) => {
+      counterInitDraw.current += 1;
+      
+      if (counterInitDraw.current === 1) {
+        collabLines.current.push(data);
+      }
+
+      if (counterInitDraw.current === 2) {
+        counterInitDraw.current = 0;
+      }
+
       
     });
+
+    socket.on("newDrawCollab", (data) => {
+      const lineCollabUser = collabLines.current.filter(
+        (line) => line.id === data.id
+      );
+      const lastLineCollabed = lineCollabUser[lineCollabUser.length - 1];
+      const lineCollabDifferent = collabLines.current.filter(
+        (line) => line.id !== data.id
+      );
+
+      if (lineCollabUser.length > 0) {
+        lastLineCollabed.points = lastLineCollabed.points.concat(data.data);
+        lineCollabUser.splice(lineCollabUser.length - 1, 1, lastLineCollabed);
+
+        collabLines.current = [...lineCollabDifferent, ...lineCollabUser];
+      }
+    });
+
+    socket.on("reloading",(data:any[])=>{
+      console.log(data, socket?.id)
+      if(socket){
+        const indexOf=data.indexOf(socket.id)
+        if(indexOf===-1){
+          if(typeof window !== 'undefined'){
+            window.location.reload()
+          }
+        }
+      }
+    })
+
 
     setTimeout(() => {
       if (socket) {
         socket.emit("adduser", null);
       }
     }, 200);
+
+    
     shouldInit.current = false;
   }
-  
 
   //COLLAB
+
+  function initCollabDraw(e: any) {
+    if (
+      (props.event !== "DRAW" && props.event !== "ERASE") ||
+      !isDrawing.current
+    )
+      return;
+    const stage = e.target.getStage();
+    const pos = relativePointerPosition(stage);
+    socket?.emit("initDrawCollab", {
+      tool: props.event,
+      points: [pos.x, pos.y],
+    });
+  }
+
   function collabMouse(e: any) {
     const stage = e.target.getStage();
     const point = relativePointerPosition(stage);
@@ -98,18 +166,25 @@ export default function Drawer({ ...props }: Props) {
       x: point.x,
       y: point.y,
     });
-    // socket?.emit("mouseCollab", {
-    //   x: e.clientX - e.currentTarget.offsetTop,
-    //   y: e.clientY - e.currentTarget.offsetLeft,
-    // });
+
+    if (
+      (props.event !== "DRAW" && props.event !== "ERASE") ||
+      !isDrawing.current
+    )
+      return;
+    socket?.emit("drawCollab", [point.x, point.y]);
   }
 
-  function collabTouch(e:React.TouchEvent<HTMLDivElement>){
+  function collabTouch(e: any) {
+    const stage = e.target.getStage();
+    const point = relativePointerPosition(stage);
     socket?.emit("mouseCollab", {
-      x: e.touches[0].clientX - e.currentTarget.offsetTop,
-      y: e.touches[0].clientY - e.currentTarget.offsetLeft,
+      x: point.x,
+      y: point.y,
     });
   }
+
+  
 
   //DRAW
   function initDraw(e: any) {
@@ -117,7 +192,7 @@ export default function Drawer({ ...props }: Props) {
     isDrawing.current = true;
     const stage = e.target.getStage();
     const pos = relativePointerPosition(stage);
-    setLines([...lines, { tool:props.event  , points: [pos.x, pos.y] }]);
+    setLines([...lines, { tool: props.event, points: [pos.x, pos.y] }]);
   }
 
   function handleDraw(e: any) {
@@ -170,8 +245,6 @@ export default function Drawer({ ...props }: Props) {
     const touch1 = e.evt.touches[0];
     const touch2 = e.evt.touches[1];
 
-    
-
     if (!touch1 || !touch2) return;
 
     if (stage.isDragging()) {
@@ -209,14 +282,8 @@ export default function Drawer({ ...props }: Props) {
     stage.scaleX(scale);
     stage.scaleY(scale);
 
-    
-    // alert(newCenter.x)
-    // alert(lastCenter.x)
-
-
-    if(!lastCenter) {
-      alert("kibo")
-      return
+    if (!lastCenter) {
+      return;
     }
     var dx = newCenter.x - lastCenter.x;
     var dy = newCenter.y - lastCenter.y;
@@ -226,10 +293,7 @@ export default function Drawer({ ...props }: Props) {
       y: newCenter.y - pointTo.y * scale + dy,
     };
 
-    stage.position(newPos);
-
-    setlastDistance(dist);
-    setlastCenter(lastCenter);
+    socket?.emit("mouseCollab", newPos);
   }
 
   function stopPinchZoom() {
@@ -244,7 +308,6 @@ export default function Drawer({ ...props }: Props) {
 
     // get pointer (say mouse or touch) position
     var pos = node.getStage().getPointerPosition();
-    
 
     // now we find relative point
     return transform.point(pos);
@@ -261,56 +324,89 @@ export default function Drawer({ ...props }: Props) {
     return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
   }
 
-  
+  if(props.loading || !props.valid){
+    return <></>
+  }
   return (
-    <div className="relative w-full h-full border-2" >
-      {collabMouseUser.map(el=>socket !=undefined && el.id != socket.id? (
-        <Cursor id={el.id} x={el.x} y={el.y} key={el.id}/>
-      ):<></>)}
-    <Stage
-      onTouchStart={initDraw}
-      onTouchMove={(e) => {
-        handleDraw(e);
-        handlePinchZoom(e);
-      }}
-      onTouchEnd={() => {
-        stopDraw();
-        stopPinchZoom();
-      }}
-      draggable={props.event === "GRAB"}
-      width={props.size.width}
-      height={props.size.height}
-      onMouseDown={initDraw}
-      onMousemove={(e:any)=>{
-        handleDraw(e)
-        collabMouse(e)
-      }}
-      onMouseup={stopDraw}
-      onWheel={handleZoom}
-    >
-      <Layer>
-        {lines.map((line: any, i: any) => (
-          <Line
-            key={i}
-            points={line.points}
-            stroke="#000000"
-            strokeWidth={5}
-            tension={0.5}
-            lineCap="round"
-            lineJoin="round"
-            globalCompositeOperation={
-              line.tool === "ERASE" ? "destination-out" : "source-over"
-            }
-          />
-        ))}
-      </Layer>
-    </Stage>
+    
+    <div className="relative w-full h-full">
+      {collabMouseUser.map((el) =>
+        socket != undefined && el.id != socket.id ? (
+          <Cursor id={el.id} x={el.x} y={el.y} key={el.id} />
+        ) : (
+          <></>
+        )
+      )}
+      <Stage
+        onTouchStart={(e) => {
+          initDraw(e);
+          initCollabDraw(e);
+        }}
+        onTouchMove={(e) => {
+          handleDraw(e);
+          handlePinchZoom(e);
+          collabTouch(e);
+          initCollabDraw(e);
+        }}
+        onTouchEnd={() => {
+          stopDraw();
+          stopPinchZoom();
+        }}
+        draggable={props.event === "GRAB"}
+        width={props.size.width}
+        height={props.size.height}
+        onMouseDown={(e: any) => {
+          initDraw(e);
+          initCollabDraw(e);
+        }}
+        onMousemove={(e: any) => {
+          handleDraw(e);
+          collabMouse(e);
+        }}
+        onMouseup={stopDraw}
+        onWheel={handleZoom}
+      >
+        <Layer>
+          {lines.map((line: any, i: any) => (
+            <Line
+              key={i}
+              points={line.points}
+              stroke="#000000"
+              strokeWidth={5}
+              tension={0.5}
+              lineCap="round"
+              lineJoin="round"
+              globalCompositeOperation={
+                line.tool === "ERASE" ? "destination-out" : "source-over"
+              }
+            />
+          ))}
+
+          {collabLines.current.map((line: CollabLineDraw, i: any) =>
+            socket && line.id !== socket.id ? (
+              <Line
+                key={"collab" + i}
+                points={line.points}
+                stroke="#000000"
+                strokeWidth={5}
+                tension={0.5}
+                lineCap="round"
+                lineJoin="round"
+                globalCompositeOperation={
+                  line.tool === "ERASE" ? "destination-out" : "source-over"
+                }
+              />
+            ) : (
+              <></>
+            )
+          )}
+        </Layer>
+      </Stage>
     </div>
   );
 }
 
-
-function Cursor({...props}:mouseCollabUser) {
+function Cursor({ ...props }: mouseCollabUser) {
   return (
     <div
       key={props.id}

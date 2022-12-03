@@ -4,6 +4,10 @@ export type LineDraw = {
   points: number[];
 };
 
+export type CollabLineDraw=LineDraw & {
+  id:any
+}
+
 export type Size = {
   width: number;
   height: number;
