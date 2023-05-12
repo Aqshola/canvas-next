@@ -47,7 +47,8 @@ export default function Drawer({ ...props }: Props) {
 
   useEffect(() => {
     if (!shouldInit.current) return;
-    initSocket();
+    // Here need to use .then() because initSocket returns a Promise
+    initSocket().then(r => {});
 
     return () => {
       socket?.off("full");
@@ -59,7 +60,8 @@ export default function Drawer({ ...props }: Props) {
       socket?.off("newDrawCollab");
       socket?.close();
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[]);
 
   async function initSocket() {
     await fetch(`/api/draw/${id}`);
@@ -73,7 +75,7 @@ export default function Drawer({ ...props }: Props) {
     });
 
     socket.on("full", (data) => {
-      
+
       if (data) {
         props.handleLoading(false);
         props.handleValid(false);
@@ -91,7 +93,7 @@ export default function Drawer({ ...props }: Props) {
 
     socket.on("newInitDrawCollab", (data) => {
       counterInitDraw.current += 1;
-      
+
       if (counterInitDraw.current === 1) {
         collabLines.current.push(data);
       }
@@ -100,7 +102,7 @@ export default function Drawer({ ...props }: Props) {
         counterInitDraw.current = 0;
       }
 
-      
+
     });
 
     socket.on("newDrawCollab", (data) => {
@@ -138,7 +140,7 @@ export default function Drawer({ ...props }: Props) {
       }
     }, 200);
 
-    
+
     shouldInit.current = false;
   }
 
@@ -183,7 +185,7 @@ export default function Drawer({ ...props }: Props) {
     });
   }
 
-  
+
 
   //DRAW
   function initDraw(e: any) {
@@ -327,7 +329,7 @@ export default function Drawer({ ...props }: Props) {
     return <></>
   }
   return (
-    
+
     <div className="relative w-full h-full">
       {collabMouseUser.map((el) =>
         socket != undefined && el.id != socket.id ? (
