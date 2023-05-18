@@ -23,14 +23,11 @@ export default async function handler(
     console.log("creating new socket io server");
     const httpServer: HttpServer = res.socket.server as any;
     const io = new SocketIOServer(httpServer);
-    const mainSpace=io
-    
-
-    mainSpace.on("connection", (socket) => {
+    io.on("connection", (socket) => {
       socket.broadcast.emit("total", ids);
 
       socket.on("adduser",function(){
-        
+
         if(ids.length>2){
           io.to(socket.id).emit("full",true)
         }else{
@@ -41,11 +38,11 @@ export default async function handler(
         }
       })
 
-      
+
       socket.on("disconnect",function(){
         ids=ids.filter(id=>id!==socket.id)
         delete listMouseId[socket.id]
-        
+
         if(ids.length<2){
           socket.broadcast.emit("reload", true);
         }
@@ -59,7 +56,7 @@ export default async function handler(
       })
     });
 
-    
+
 
     res.socket.server.io = io;
   }

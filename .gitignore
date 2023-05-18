@@ -1,5 +1,11 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# JetBrains project data
+.idea
+# Local development environment configuration files
+docker-compose.yml
+nginx.conf
+
 # dependencies
 /node_modules
 /.pnp
